@@ -1,7 +1,7 @@
 import java.io.File;
 import java.util.List;
 import java.util.Scanner;
-
+import java.util.Arrays;
 public class Main {
     public static void main(String[] args) throws Exception {
         // TODO: Uncomment the code below to pass the first stage
@@ -13,6 +13,9 @@ public class Main {
             
             String input = scanner.nextLine().trim();
             if(input.equals("exit 0") || input.equals("exit")){
+    System.exit(0);
+}
+if(input.equals("exit 0") || input.equals("exit")){
     System.exit(0);
 }
 else if(input.startsWith("echo ")){
@@ -29,7 +32,7 @@ else if (input.startsWith("type ")) {
         boolean found = false;
         for (String dir : dirs) {
             File f = new File(dir, command);
-           if (f.exists() && f.canExecute()) {
+            if (f.exists() && f.canExecute()) {
                 System.out.println(command + " is " + f.getAbsolutePath());
                 found = true;
                 break;
@@ -41,7 +44,25 @@ else if (input.startsWith("type ")) {
     }
 }
 else {
-    System.out.println(input + ": command not found");
+    String[] parts = input.split(" ");
+    String command = parts[0];
+    String pathEnv = System.getenv("PATH");
+    String[] dirs = pathEnv.split(":");
+    boolean found = false;
+    for (String dir : dirs) {
+        File f = new File(dir, command);
+        if (f.exists() && f.canExecute()) {
+            ProcessBuilder pb = new ProcessBuilder(parts);
+            pb.inheritIO();
+            Process p = pb.start();
+            p.waitFor();
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        System.out.println(command + ": command not found");
+    }
 }
         }
     }
