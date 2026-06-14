@@ -13,15 +13,16 @@ public class Main {
             
             String input = scanner.nextLine().trim();
             if(input.equals("exit 0") || input.equals("exit")){
-                System.exit(0);
-            }
-           else if (input.startsWith("type ")) {
+    System.exit(0);
+}
+else if(input.startsWith("echo ")){
+    System.out.println(input.substring(5).trim());
+}
+else if (input.startsWith("type ")) {
     String command = input.substring(5).trim();
-    
     List<String> builtins = List.of("echo", "exit", "type");
-    
     if (builtins.contains(command)) {
-        // print "command is a shell builtin"
+        System.out.println(command + " is a shell builtin");
     } else {
         String pathEnv = System.getenv("PATH");
         String[] dirs = pathEnv.split(":");
@@ -29,14 +30,19 @@ public class Main {
         for (String dir : dirs) {
             File f = new File(dir, command);
             if (f.exists()) {
-                // print "command is /full/path"
+                System.out.println(command + " is " + f.getAbsolutePath());
                 found = true;
                 break;
             }
         }
         if (!found) {
-            // print "command: not found"
+            System.out.println(command + ": not found");
         }
     }
 }
-        }}}
+else {
+    System.out.println(input + ": command not found");
+}
+        }
+    }
+}
