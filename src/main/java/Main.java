@@ -13,6 +13,9 @@ public class Main {
             if(input.equals("exit 0") || input.equals("exit")){
                 System.exit(0);
             }
+            else if(input.startsWith("echo")){
+                input.substring(5);
+            }
             else{
             System.out.println(input + ": command not found");
             }
