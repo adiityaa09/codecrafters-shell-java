@@ -13,7 +13,7 @@ public class Main {
             if(input.equals("exit 0") || input.equals("exit")){
                 System.exit(0);
             }
-            else if(input.startsWith("echo ")){
+            else if(input.startsWith("echo")){
                 System.out.print(input.substring(5).trim());
             }
             else{
