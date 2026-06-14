@@ -29,7 +29,7 @@ else if (input.startsWith("type ")) {
         boolean found = false;
         for (String dir : dirs) {
             File f = new File(dir, command);
-            if (f.exists()) {
+           if (f.exists() && f.canExecute()) {
                 System.out.println(command + " is " + f.getAbsolutePath());
                 found = true;
                 break;
