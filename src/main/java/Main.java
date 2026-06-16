@@ -15,15 +15,13 @@ public class Main {
             if(input.equals("exit 0") || input.equals("exit")){
     System.exit(0);
 }
-if(input.equals("exit 0") || input.equals("exit")){
-    System.exit(0);
-}
+
 else if(input.startsWith("echo ")){
     System.out.println(input.substring(5).trim());
 }
 else if (input.startsWith("type ")) {
     String command = input.substring(5).trim();
-    List<String> builtins = List.of("echo", "exit", "type");
+    List<String> builtins = List.of("echo", "exit", "type","pwd");
     if (builtins.contains(command)) {
         System.out.println(command + " is a shell builtin");
     } else {
@@ -42,6 +40,9 @@ else if (input.startsWith("type ")) {
             System.out.println(command + ": not found");
         }
     }
+}
+else if(input.equals("pwd")){
+    System.out.println(System.getProperty("user.dir"));
 }
 else {
     String[] parts = input.split(" ");
