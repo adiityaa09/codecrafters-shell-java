@@ -48,7 +48,7 @@ else if (input.startsWith("cd ")) {
     String path = input.substring(3).trim();
     File dir = new File(path);
     if (dir.exists() && dir.isDirectory()) {
-        System.setProperty("user.dir", dir.getAbsolutePath());
+        System.setProperty("user.dir", dir.getCanonicalPath());
     } else {
         System.out.println("cd: " + path + ": No such file or directory");
     }
