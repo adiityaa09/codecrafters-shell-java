@@ -21,7 +21,7 @@ else if(input.startsWith("echo ")){
 }
 else if (input.startsWith("type ")) {
     String command = input.substring(5).trim();
-    List<String> builtins = List.of("echo", "exit", "type","pwd");
+    List<String> builtins = List.of("echo", "exit", "type","pwd","cd");
     if (builtins.contains(command)) {
         System.out.println(command + " is a shell builtin");
     } else {
@@ -43,6 +43,15 @@ else if (input.startsWith("type ")) {
 }
 else if(input.equals("pwd")){
     System.out.println(System.getProperty("user.dir"));
+}
+else if (input.startsWith("cd ")) {
+    String path = input.substring(3).trim();
+    File dir = new File(path);
+    if (dir.exists() && dir.isDirectory()) {
+        System.setProperty("user.dir", dir.getAbsolutePath());
+    } else {
+        System.out.println("cd: " + path + ": No such file or directory");
+    }
 }
 else {
     String[] parts = input.split(" ");
