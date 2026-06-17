@@ -46,7 +46,12 @@ else if(input.equals("pwd")){
 }
 else if (input.startsWith("cd ")) {
     String path = input.substring(3).trim();
-    File dir = new File(System.getProperty("user.dir"),path);
+    File dir;
+    if (path.startsWith("/")) {
+        dir = new File(path);
+    } else {
+        dir = new File(System.getProperty("user.dir"), path);
+    }
     if (dir.exists() && dir.isDirectory()) {
         System.setProperty("user.dir", dir.getCanonicalPath());
     } else {
