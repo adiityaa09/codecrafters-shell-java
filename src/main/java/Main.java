@@ -16,8 +16,31 @@ public class Main {
     System.exit(0);
 }
 
-else if(input.startsWith("echo ")){
-    System.out.println(input.substring(5).trim());
+else if (input.startsWith("echo ")) {
+    String rest = input.substring(5);
+    StringBuilder result = new StringBuilder();
+    boolean inQuote = false;
+    
+    for (int i = 0; i < rest.length(); i++) {
+        char c = rest.charAt(i);
+        
+        if (c == '\'' && !inQuote) {
+            inQuote = true;
+        }
+        else if (c == '\'' && inQuote) {
+            inQuote = false;
+        }
+        else if (c == ' ' && !inQuote) {
+            if (result.length() > 0 && result.charAt(result.length()-1) != ' ') {
+                result.append(' ');
+            }
+        }
+        else {
+            result.append(c);
+        }
+    }
+    
+    System.out.println(result.toString().trim());
 }
 else if (input.startsWith("type ")) {
     String command = input.substring(5).trim();
