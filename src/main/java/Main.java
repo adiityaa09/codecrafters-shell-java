@@ -44,9 +44,13 @@ else if (input.startsWith("type ")) {
 else if(input.equals("pwd")){
     System.out.println(System.getProperty("user.dir"));
 }
+
 else if (input.startsWith("cd ")) {
     String path = input.substring(3).trim();
     File dir;
+    if (path.equals("~")) {
+    path = System.getenv("HOME");
+}
     if (path.startsWith("/")) {
         dir = new File(path);
     } else {
