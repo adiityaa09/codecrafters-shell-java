@@ -7,31 +7,31 @@ import java.util.ArrayList;
 public class Main {
 
     static List<String> parseArgs(String input) {
-        List<String> args = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        boolean inQuote = false;
-        
-        for (int i = 0; i < input.length(); i++) {
-            char c = input.charAt(i);
-            if (c == '\'' && !inQuote) {
-                inQuote = true;
-            } else if (c == '\'' && inQuote) {
-                inQuote = false;
-            } else if (c == ' ' && !inQuote) {
-                if (current.length() > 0) {
-                    args.add(current.toString());
-                    current = new StringBuilder();
-                }
-            } else {
-                current.append(c);
+    List<String> args = new ArrayList<>();
+    StringBuilder current = new StringBuilder();
+    boolean inSingleQuote = false;
+    boolean inDoubleQuote = false;
+    
+    for (int i = 0; i < input.length(); i++) {
+        char c = input.charAt(i);
+        if (c == '\'' && !inDoubleQuote) {
+            inSingleQuote = !inSingleQuote;
+        } else if (c == '"' && !inSingleQuote) {
+            inDoubleQuote = !inDoubleQuote;
+        } else if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
+            if (current.length() > 0) {
+                args.add(current.toString());
+                current = new StringBuilder();
             }
+        } else {
+            current.append(c);
         }
-        if (current.length() > 0) {
-            args.add(current.toString());
-        }
-        return args;
     }
-
+    if (current.length() > 0) {
+        args.add(current.toString());
+    }
+    return args;
+}
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
         
@@ -44,27 +44,32 @@ public class Main {
             if (input.equals("exit 0") || input.equals("exit")) {
                 System.exit(0);
             }
-            else if (input.startsWith("echo ")) {
-                String rest = input.substring(5);
-                StringBuilder result = new StringBuilder();
-                boolean inQuote = false;
-                
-                for (int i = 0; i < rest.length(); i++) {
-                    char c = rest.charAt(i);
-                    if (c == '\'' && !inQuote) {
-                        inQuote = true;
-                    } else if (c == '\'' && inQuote) {
-                        inQuote = false;
-                    } else if (c == ' ' && !inQuote) {
-                        if (result.length() > 0 && result.charAt(result.length()-1) != ' ') {
-                            result.append(' ');
-                        }
-                    } else {
-                        result.append(c);
-                    }
-                }
-                System.out.println(result.toString().trim());
+         else if (input.startsWith("echo ")) {
+    String rest = input.substring(5);
+    StringBuilder result = new StringBuilder();
+    boolean inSingleQuote = false;
+    boolean inDoubleQuote = false;
+    
+    for (int i = 0; i < rest.length(); i++) {
+        char c = rest.charAt(i);
+        
+        if (c == '\'' && !inDoubleQuote) {
+            inSingleQuote = !inSingleQuote;
+        }
+        else if (c == '"' && !inSingleQuote) {
+            inDoubleQuote = !inDoubleQuote;
+        }
+        else if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
+            if (result.length() > 0 && result.charAt(result.length()-1) != ' ') {
+                result.append(' ');
             }
+        }
+        else {
+            result.append(c);
+        }
+    }
+    System.out.println(result.toString().trim());
+}
             else if (input.startsWith("type ")) {
                 String command = input.substring(5).trim();
                 List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd");
