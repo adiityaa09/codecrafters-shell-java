@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class Main {
 
-    static List<String> parseArgs(String input) {
+   static List<String> parseArgs(String input) {
     List<String> args = new ArrayList<>();
     StringBuilder current = new StringBuilder();
     boolean inSingleQuote = false;
@@ -14,7 +14,13 @@ public class Main {
     
     for (int i = 0; i < input.length(); i++) {
         char c = input.charAt(i);
-        if (c == '\'' && !inDoubleQuote) {
+        if (c == '\\' && !inSingleQuote && !inDoubleQuote) {
+            i++;
+            if (i < input.length()) {
+                current.append(input.charAt(i));
+            }
+        }
+        else if (c == '\'' && !inDoubleQuote) {
             inSingleQuote = !inSingleQuote;
         } else if (c == '"' && !inSingleQuote) {
             inDoubleQuote = !inDoubleQuote;
@@ -44,7 +50,7 @@ public class Main {
             if (input.equals("exit 0") || input.equals("exit")) {
                 System.exit(0);
             }
-         else if (input.startsWith("echo ")) {
+else if (input.startsWith("echo ")) {
     String rest = input.substring(5);
     StringBuilder result = new StringBuilder();
     boolean inSingleQuote = false;
@@ -53,7 +59,13 @@ public class Main {
     for (int i = 0; i < rest.length(); i++) {
         char c = rest.charAt(i);
         
-        if (c == '\'' && !inDoubleQuote) {
+        if (c == '\\' && !inSingleQuote && !inDoubleQuote) {
+            i++;
+            if (i < rest.length()) {
+                result.append(rest.charAt(i));
+            }
+        }
+        else if (c == '\'' && !inDoubleQuote) {
             inSingleQuote = !inSingleQuote;
         }
         else if (c == '"' && !inSingleQuote) {
