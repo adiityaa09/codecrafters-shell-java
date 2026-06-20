@@ -69,12 +69,7 @@ public class Main {
                 input = redirParts[0].trim();
                 outputFile = redirParts[1].trim();
             }
-            String errorFile = null;
-            if (input.contains(" > ") || input.contains(" 1> ")) {
-                String[] redirParts = input.split(" > | 1> ");
-                input = redirParts[0].trim();
-                outputFile = redirParts[1].trim();
-            }
+           String errorFile = null;
             if (input.contains(" 2> ")) {
                 String[] redirParts = input.split(" 2> ");
                 input = redirParts[0].trim();
@@ -119,7 +114,7 @@ public class Main {
                 }
 
                 if (outputFile != null) {
-                    PrintWriter writer = new PrintWriter(new FileWriter(outputFile));
+                    PrintWriter writer = new PrintWriter(new FileWriter(outputFile,appendMode));
                     writer.println(result.toString().trim());
                     writer.close();
                 } else {
