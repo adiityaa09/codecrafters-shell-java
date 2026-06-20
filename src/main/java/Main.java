@@ -114,6 +114,9 @@ public class Main {
                 } else {
                     System.out.println(result.toString().trim());
                 }
+                if (errorFile != null) {
+                    new File(errorFile).createNewFile();
+                }
             } else if (input.startsWith("type ")) {
                 String command = input.substring(5).trim();
                 List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd");
