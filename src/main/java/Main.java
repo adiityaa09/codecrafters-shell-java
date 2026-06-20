@@ -182,9 +182,13 @@ public class Main {
                         } else {
                             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
                         }
-
+                         boolean errorAppendMode = false;
                         if (errorFile != null) {
-                            pb.redirectError(new File(errorFile));
+                            if (errorAppendMode) {
+                                pb.redirectError(ProcessBuilder.Redirect.appendTo(new File(errorFile)));
+                            } else {
+                                pb.redirectError(new File(errorFile));
+                            }
                         } else {
                             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                         }
