@@ -69,7 +69,7 @@ public class Main {
                 input = redirParts[0].trim();
                 outputFile = redirParts[1].trim();
             }
-           String errorFile = null;
+            String errorFile = null;
             if (input.contains(" 2> ")) {
                 String[] redirParts = input.split(" 2> ");
                 input = redirParts[0].trim();
@@ -114,7 +114,7 @@ public class Main {
                 }
 
                 if (outputFile != null) {
-                    PrintWriter writer = new PrintWriter(new FileWriter(outputFile,appendMode));
+                    PrintWriter writer = new PrintWriter(new FileWriter(outputFile, appendMode));
                     writer.println(result.toString().trim());
                     writer.close();
                 } else {
@@ -174,7 +174,11 @@ public class Main {
                     if (f.exists() && f.canExecute()) {
                         ProcessBuilder pb = new ProcessBuilder(parts);
                         if (outputFile != null) {
-                            pb.redirectOutput(new File(outputFile));
+                            if (appendMode) {
+                                pb.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(outputFile)));
+                            } else {
+                                pb.redirectOutput(new File(outputFile));
+                            }
                         } else {
                             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
                         }
