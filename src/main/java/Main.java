@@ -133,7 +133,7 @@ public class Main {
                 }
             } else if (input.startsWith("type ")) {
                 String command = input.substring(5).trim();
-                List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd");
+                List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
                 if (builtins.contains(command)) {
                     System.out.println(command + " is a shell builtin");
                 } else {
@@ -152,6 +152,8 @@ public class Main {
                         System.out.println(command + ": not found");
                     }
                 }
+            } else if (input.equals("jobs")) {
+
             } else if (input.equals("pwd")) {
                 System.out.println(System.getProperty("user.dir"));
             } else if (input.startsWith("cd ")) {
