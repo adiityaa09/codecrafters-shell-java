@@ -69,8 +69,16 @@ public class Main {
                 input = redirParts[0].trim();
                 outputFile = redirParts[1].trim();
             }
+
             String errorFile = null;
-            if (input.contains(" 2> ")) {
+            boolean errorAppendMode = false;
+
+            if (input.contains(" 2>> ")) {
+                String[] redirParts = input.split(" 2>> ");
+                input = redirParts[0].trim();
+                errorFile = redirParts[1].trim();
+                errorAppendMode = true;
+            } else if (input.contains(" 2> ")) {
                 String[] redirParts = input.split(" 2> ");
                 input = redirParts[0].trim();
                 errorFile = redirParts[1].trim();
@@ -173,6 +181,7 @@ public class Main {
                     File f = new File(dir, command);
                     if (f.exists() && f.canExecute()) {
                         ProcessBuilder pb = new ProcessBuilder(parts);
+
                         if (outputFile != null) {
                             if (appendMode) {
                                 pb.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(outputFile)));
@@ -182,7 +191,7 @@ public class Main {
                         } else {
                             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
                         }
-                         boolean errorAppendMode = false;
+
                         if (errorFile != null) {
                             if (errorAppendMode) {
                                 pb.redirectError(ProcessBuilder.Redirect.appendTo(new File(errorFile)));
@@ -192,6 +201,7 @@ public class Main {
                         } else {
                             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                         }
+
                         Process p = pb.start();
                         p.waitFor();
                         found = true;
