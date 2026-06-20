@@ -56,8 +56,19 @@ public class Main {
             System.out.flush();
 
             String input = scanner.nextLine().trim();
-
             String outputFile = null;
+            boolean appendMode = false;
+
+            if (input.contains(" >> ") || input.contains(" 1>> ")) {
+                String[] redirParts = input.split(" >> | 1>> ");
+                input = redirParts[0].trim();
+                outputFile = redirParts[1].trim();
+                appendMode = true;
+            } else if (input.contains(" > ") || input.contains(" 1> ")) {
+                String[] redirParts = input.split(" > | 1> ");
+                input = redirParts[0].trim();
+                outputFile = redirParts[1].trim();
+            }
             String errorFile = null;
             if (input.contains(" > ") || input.contains(" 1> ")) {
                 String[] redirParts = input.split(" > | 1> ");
