@@ -58,10 +58,16 @@ public class Main {
             String input = scanner.nextLine().trim();
 
             String outputFile = null;
+            String errorFile = null;
             if (input.contains(" > ") || input.contains(" 1> ")) {
                 String[] redirParts = input.split(" > | 1> ");
                 input = redirParts[0].trim();
                 outputFile = redirParts[1].trim();
+            }
+            if (input.contains(" 2> ")) {
+                String[] redirParts = input.split(" 2> ");
+                input = redirParts[0].trim();
+                errorFile = redirParts[1].trim();
             }
 
             if (input.equals("exit 0") || input.equals("exit")) {
@@ -160,9 +166,14 @@ public class Main {
                         ProcessBuilder pb = new ProcessBuilder(parts);
                         if (outputFile != null) {
                             pb.redirectOutput(new File(outputFile));
-                            pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                         } else {
-                            pb.inheritIO();
+                            pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                        }
+
+                        if (errorFile != null) {
+                            pb.redirectError(new File(errorFile));
+                        } else {
+                            pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                         }
                         Process p = pb.start();
                         p.waitFor();
