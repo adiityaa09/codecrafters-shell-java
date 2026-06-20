@@ -6,83 +6,93 @@ import java.util.ArrayList;
 
 public class Main {
 
-   static List<String> parseArgs(String input) {
-    List<String> args = new ArrayList<>();
-    StringBuilder current = new StringBuilder();
-    boolean inSingleQuote = false;
-    boolean inDoubleQuote = false;
-    
-    for (int i = 0; i < input.length(); i++) {
-        char c = input.charAt(i);
-        if (c == '\\' && !inSingleQuote && !inDoubleQuote) {
-            i++;
-            if (i < input.length()) {
-                current.append(input.charAt(i));
+    static List<String> parseArgs(String input) {
+        List<String> args = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == '\\' && !inSingleQuote && !inDoubleQuote) {
+                i++;
+                if (i < input.length()) {
+                    current.append(input.charAt(i));
+                }
+            } else if (c == '\\' && inDoubleQuote) {
+                if (i + 1 < input.length() &&
+                        (input.charAt(i + 1) == '"' || input.charAt(i + 1) == '\\')) {
+                    i++;
+                    current.append(input.charAt(i));
+                } else {
+                    current.append(c);
+                }
+            } else if (c == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+            } else if (c == '"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+            } else if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
+                if (current.length() > 0) {
+                    args.add(current.toString());
+                    current = new StringBuilder();
+                }
+            } else {
+                current.append(c);
             }
         }
-        else if (c == '\'' && !inDoubleQuote) {
-            inSingleQuote = !inSingleQuote;
-        } else if (c == '"' && !inSingleQuote) {
-            inDoubleQuote = !inDoubleQuote;
-        } else if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
-            if (current.length() > 0) {
-                args.add(current.toString());
-                current = new StringBuilder();
-            }
-        } else {
-            current.append(c);
+        if (current.length() > 0) {
+            args.add(current.toString());
         }
+        return args;
     }
-    if (current.length() > 0) {
-        args.add(current.toString());
-    }
-    return args;
-}
+
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
-        
+
         while (true) {
             System.out.print("$ ");
             System.out.flush();
-            
+
             String input = scanner.nextLine().trim();
 
             if (input.equals("exit 0") || input.equals("exit")) {
                 System.exit(0);
-            }
-else if (input.startsWith("echo ")) {
-    String rest = input.substring(5);
-    StringBuilder result = new StringBuilder();
-    boolean inSingleQuote = false;
-    boolean inDoubleQuote = false;
-    
-    for (int i = 0; i < rest.length(); i++) {
-        char c = rest.charAt(i);
-        
-        if (c == '\\' && !inSingleQuote && !inDoubleQuote) {
-            i++;
-            if (i < rest.length()) {
-                result.append(rest.charAt(i));
-            }
-        }
-        else if (c == '\'' && !inDoubleQuote) {
-            inSingleQuote = !inSingleQuote;
-        }
-        else if (c == '"' && !inSingleQuote) {
-            inDoubleQuote = !inDoubleQuote;
-        }
-        else if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
-            if (result.length() > 0 && result.charAt(result.length()-1) != ' ') {
-                result.append(' ');
-            }
-        }
-        else {
-            result.append(c);
-        }
-    }
-    System.out.println(result.toString().trim());
-}
-            else if (input.startsWith("type ")) {
+            } else if (input.startsWith("echo ")) {
+                String rest = input.substring(5);
+                StringBuilder result = new StringBuilder();
+                boolean inSingleQuote = false;
+                boolean inDoubleQuote = false;
+
+                for (int i = 0; i < rest.length(); i++) {
+                    char c = rest.charAt(i);
+
+                    if (c == '\\' && !inSingleQuote && !inDoubleQuote) {
+                        i++;
+                        if (i < rest.length()) {
+                            result.append(rest.charAt(i));
+                        }
+                    } else if (c == '\\' && inDoubleQuote) {
+                        if (i + 1 < rest.length() &&
+                                (rest.charAt(i + 1) == '"' || rest.charAt(i + 1) == '\\')) {
+                            i++;
+                            result.append(rest.charAt(i));
+                        } else {
+                            result.append(c);
+                        }
+                    } else if (c == '\'' && !inDoubleQuote) {
+                        inSingleQuote = !inSingleQuote;
+                    } else if (c == '"' && !inSingleQuote) {
+                        inDoubleQuote = !inDoubleQuote;
+                    } else if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
+                        if (result.length() > 0 && result.charAt(result.length() - 1) != ' ') {
+                            result.append(' ');
+                        }
+                    } else {
+                        result.append(c);
+                    }
+                }
+                System.out.println(result.toString().trim());
+            } else if (input.startsWith("type ")) {
                 String command = input.substring(5).trim();
                 List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd");
                 if (builtins.contains(command)) {
@@ -103,11 +113,9 @@ else if (input.startsWith("echo ")) {
                         System.out.println(command + ": not found");
                     }
                 }
-            }
-            else if (input.equals("pwd")) {
+            } else if (input.equals("pwd")) {
                 System.out.println(System.getProperty("user.dir"));
-            }
-            else if (input.startsWith("cd ")) {
+            } else if (input.startsWith("cd ")) {
                 String path = input.substring(3).trim();
                 if (path.equals("~")) {
                     path = System.getenv("HOME");
@@ -124,6 +132,7 @@ else if (input.startsWith("echo ")) {
                     System.out.println("cd: " + path + ": No such file or directory");
                 }
             }
+
             else {
                 List<String> partsList = parseArgs(input);
                 String[] parts = partsList.toArray(new String[0]);
