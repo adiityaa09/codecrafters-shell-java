@@ -3,6 +3,8 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.io.PrintWriter;
+import java.io.FileWriter;
 
 public class Main {
 
@@ -19,15 +21,17 @@ public class Main {
                 if (i < input.length()) {
                     current.append(input.charAt(i));
                 }
-            } else if (c == '\\' && inDoubleQuote) {
+            }
+            else if (c == '\\' && inDoubleQuote) {
                 if (i + 1 < input.length() &&
-                        (input.charAt(i + 1) == '"' || input.charAt(i + 1) == '\\')) {
+                    (input.charAt(i+1) == '"' || input.charAt(i+1) == '\\')) {
                     i++;
                     current.append(input.charAt(i));
                 } else {
                     current.append(c);
                 }
-            } else if (c == '\'' && !inDoubleQuote) {
+            }
+            else if (c == '\'' && !inDoubleQuote) {
                 inSingleQuote = !inSingleQuote;
             } else if (c == '"' && !inSingleQuote) {
                 inDoubleQuote = !inDoubleQuote;
@@ -55,9 +59,17 @@ public class Main {
 
             String input = scanner.nextLine().trim();
 
+            String outputFile = null;
+            if (input.contains(" > ") || input.contains(" 1> ")) {
+                String[] redirParts = input.split(" > | 1> ");
+                input = redirParts[0].trim();
+                outputFile = redirParts[1].trim();
+            }
+
             if (input.equals("exit 0") || input.equals("exit")) {
                 System.exit(0);
-            } else if (input.startsWith("echo ")) {
+            }
+            else if (input.startsWith("echo ")) {
                 String rest = input.substring(5);
                 StringBuilder result = new StringBuilder();
                 boolean inSingleQuote = false;
@@ -71,28 +83,41 @@ public class Main {
                         if (i < rest.length()) {
                             result.append(rest.charAt(i));
                         }
-                    } else if (c == '\\' && inDoubleQuote) {
+                    }
+                    else if (c == '\\' && inDoubleQuote) {
                         if (i + 1 < rest.length() &&
-                                (rest.charAt(i + 1) == '"' || rest.charAt(i + 1) == '\\')) {
+                            (rest.charAt(i+1) == '"' || rest.charAt(i+1) == '\\')) {
                             i++;
                             result.append(rest.charAt(i));
                         } else {
                             result.append(c);
                         }
-                    } else if (c == '\'' && !inDoubleQuote) {
+                    }
+                    else if (c == '\'' && !inDoubleQuote) {
                         inSingleQuote = !inSingleQuote;
-                    } else if (c == '"' && !inSingleQuote) {
+                    }
+                    else if (c == '"' && !inSingleQuote) {
                         inDoubleQuote = !inDoubleQuote;
-                    } else if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
-                        if (result.length() > 0 && result.charAt(result.length() - 1) != ' ') {
+                    }
+                    else if (c == ' ' && !inSingleQuote && !inDoubleQuote) {
+                        if (result.length() > 0 && result.charAt(result.length()-1) != ' ') {
                             result.append(' ');
                         }
-                    } else {
+                    }
+                    else {
                         result.append(c);
                     }
                 }
-                System.out.println(result.toString().trim());
-            } else if (input.startsWith("type ")) {
+
+                if (outputFile != null) {
+                    PrintWriter writer = new PrintWriter(new FileWriter(outputFile));
+                    writer.println(result.toString().trim());
+                    writer.close();
+                } else {
+                    System.out.println(result.toString().trim());
+                }
+            }
+            else if (input.startsWith("type ")) {
                 String command = input.substring(5).trim();
                 List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd");
                 if (builtins.contains(command)) {
@@ -113,9 +138,11 @@ public class Main {
                         System.out.println(command + ": not found");
                     }
                 }
-            } else if (input.equals("pwd")) {
+            }
+            else if (input.equals("pwd")) {
                 System.out.println(System.getProperty("user.dir"));
-            } else if (input.startsWith("cd ")) {
+            }
+            else if (input.startsWith("cd ")) {
                 String path = input.substring(3).trim();
                 if (path.equals("~")) {
                     path = System.getenv("HOME");
@@ -132,7 +159,6 @@ public class Main {
                     System.out.println("cd: " + path + ": No such file or directory");
                 }
             }
-
             else {
                 List<String> partsList = parseArgs(input);
                 String[] parts = partsList.toArray(new String[0]);
@@ -144,7 +170,11 @@ public class Main {
                     File f = new File(dir, command);
                     if (f.exists() && f.canExecute()) {
                         ProcessBuilder pb = new ProcessBuilder(parts);
-                        pb.inheritIO();
+                        if (outputFile != null) {
+                            pb.redirectOutput(new File(outputFile));
+                        } else {
+                            pb.inheritIO();
+                        }
                         Process p = pb.start();
                         p.waitFor();
                         found = true;
