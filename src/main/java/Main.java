@@ -139,7 +139,25 @@ public class Main {
 
             if (input.equals("exit 0") || input.equals("exit")) {
                 System.exit(0);
-            } else if (input.startsWith("echo ")) {
+            }
+            else if (input.contains(" | ")) {
+    String[] commandStrings = input.split("\\|");
+    List<ProcessBuilder> builders = new ArrayList<>();
+
+    for (String cmdStr : commandStrings) {
+        List<String> cmdParts = parseArgs(cmdStr.trim());
+        String[] cmdArr = cmdParts.toArray(new String[0]);
+        ProcessBuilder pb = new ProcessBuilder(cmdArr);
+        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+        builders.add(pb);
+    }
+
+    List<Process> processes = ProcessBuilder.startPipeline(builders);
+    for (Process p : processes) {
+        p.waitFor();
+    }
+} else if (input.startsWith("echo ")) {
                 String rest = input.substring(5);
                 StringBuilder result = new StringBuilder();
                 boolean inSingleQuote = false;
