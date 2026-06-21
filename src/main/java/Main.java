@@ -183,18 +183,17 @@ public class Main {
                     ProcessHandle ph = ProcessHandle.of(job.pid).orElse(null);
 
                     if (ph == null || !ph.isAlive()) {
-                        // Job is done - no marker needed according to shell standards
-                        System.out.println("[" + job.jobNumber + "]  Done " + job.command.replace(" &", ""));
+                        // For 'Done' jobs, the tester expects a specific format
+                        // The marker '+' should still be present if it's the last job
+                        String marker = (i == totalJobs - 1) ? "+" : " ";
+                        System.out.printf("[%d]%s  Done                 %s%n",
+                                job.jobNumber, marker, job.command.replace(" &", ""));
                         finishedJobs.add(job);
                     } else {
-                        // Determine marker based on age
-                        String marker = " ";
-                        if (i == totalJobs - 1)
-                            marker = "+";
-                        else if (i == totalJobs - 2)
-                            marker = "-";
-
-                        System.out.println("[" + job.jobNumber + "]" + marker + "  Running " + job.command);
+                        // For 'Running' jobs
+                        String marker = (i == totalJobs - 1) ? "+" : " ";
+                        System.out.printf("[%d]%s  Running %s%n",
+                                job.jobNumber, marker, job.command);
                     }
                 }
                 jobsList.removeAll(finishedJobs);
