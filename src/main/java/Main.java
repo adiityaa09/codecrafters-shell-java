@@ -174,57 +174,39 @@ public class Main {
         }
     }
 
-    // Runs an external command as one stage of a pipeline. Feeds inputBytes
-    // to its stdin and captures its stdout fully into a byte array so it can
-    // be forwarded to the next stage (which may itself be a builtin).
-    static byte[] runExternalStage(String[] cmdArr, byte[] inputBytes, boolean isLastStage,
-                                    String errorFile, boolean errorAppendMode) throws IOException, InterruptedException {
-        ProcessBuilder pb = new ProcessBuilder(cmdArr);
-        pb.redirectInput(ProcessBuilder.Redirect.PIPE);
-        pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
+    // Produces the output of a single builtin pipeline stage as raw bytes.
+    static byte[] runBuiltinStage(String cmdName, String rawSeg, List<String> segParts,
+                                   List<Job> jobsList) throws IOException {
+        if (cmdName.equals("echo")) {
+            String rest = rawSeg.length() > 5 ? rawSeg.substring(5) : "";
+            String formatted = formatEcho(rest);
+            return (formatted + "\n").getBytes();
+        } else if (cmdName.equals("type")) {
+            String typeArg = segParts.size() > 1 ? segParts.get(1) : "";
+            return (typeLookup(typeArg) + "\n").getBytes();
+        } else if (cmdName.equals("pwd")) {
+            return (System.getProperty("user.dir") + "\n").getBytes();
+        } else if (cmdName.equals("cd")) {
+            String path = segParts.size() > 1 ? segParts.get(1) : "";
+            doCd(path);
+            return new byte[0];
+        } else if (cmdName.equals("jobs")) {
+            return jobsListing(jobsList).getBytes();
+        }
+        return new byte[0];
+    }
 
-        if (isLastStage && errorFile != null) {
-            if (errorAppendMode) {
-                pb.redirectError(ProcessBuilder.Redirect.appendTo(new File(errorFile)));
-            } else {
-                pb.redirectError(new File(errorFile));
+    // Writes the final accumulated pipeline output to its destination
+    // (a redirected file, or real stdout).
+    static void writeFinalOutput(byte[] data, String outputFile, boolean appendMode) throws IOException {
+        if (outputFile != null) {
+            try (FileOutputStream fos = new FileOutputStream(outputFile, appendMode)) {
+                fos.write(data);
             }
         } else {
-            pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+            System.out.write(data);
+            System.out.flush();
         }
-
-        Process p;
-        try {
-            p = pb.start();
-        } catch (IOException e) {
-            System.out.println(cmdArr[0] + ": command not found");
-            return new byte[0];
-        }
-
-        final byte[] dataToWrite = (inputBytes != null) ? inputBytes : new byte[0];
-        Thread writer = new Thread(() -> {
-            try (OutputStream os = p.getOutputStream()) {
-                if (dataToWrite.length > 0) {
-                    os.write(dataToWrite);
-                }
-            } catch (IOException e) {
-                // Downstream process may have closed its stdin early (e.g. "head"); ignore.
-            }
-        });
-        writer.start();
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (InputStream is = p.getInputStream()) {
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = is.read(buf)) != -1) {
-                baos.write(buf, 0, len);
-            }
-        }
-
-        writer.join();
-        p.waitFor();
-        return baos.toByteArray();
     }
 
     public static void main(String[] args) throws Exception {
@@ -275,49 +257,130 @@ public class Main {
             if (input.equals("exit 0") || input.equals("exit")) {
                 System.exit(0);
             } else if (input.contains(" | ")) {
-                String[] commandStrings = input.split("\\|");
-                byte[] currentData = new byte[0];
-                int n = commandStrings.length;
-
-                for (int i = 0; i < n; i++) {
-                    String seg = commandStrings[i].trim();
-                    boolean isLastStage = (i == n - 1);
-
-                    List<String> segParts = parseArgs(seg);
-                    if (segParts.isEmpty()) {
+                String[] rawSegments = input.split("\\|");
+                List<String> rawSegs = new ArrayList<>();
+                List<List<String>> parsedSegs = new ArrayList<>();
+                for (String raw : rawSegments) {
+                    String seg = raw.trim();
+                    if (seg.isEmpty()) {
                         continue;
                     }
-                    String cmdName = segParts.get(0);
+                    List<String> tokens = parseArgs(seg);
+                    if (tokens.isEmpty()) {
+                        continue;
+                    }
+                    rawSegs.add(seg);
+                    parsedSegs.add(tokens);
+                }
+                int n = parsedSegs.size();
 
-                    if (cmdName.equals("echo")) {
-                        String rest = seg.length() > 5 ? seg.substring(5) : "";
-                        String formatted = formatEcho(rest);
-                        currentData = (formatted + "\n").getBytes();
-                    } else if (cmdName.equals("type")) {
-                        String typeArg = segParts.size() > 1 ? segParts.get(1) : "";
-                        String result = typeLookup(typeArg);
-                        currentData = (result + "\n").getBytes();
-                    } else if (cmdName.equals("pwd")) {
-                        currentData = (System.getProperty("user.dir") + "\n").getBytes();
-                    } else if (cmdName.equals("cd")) {
-                        String path = segParts.size() > 1 ? segParts.get(1) : "";
-                        doCd(path);
-                        currentData = new byte[0];
-                    } else if (cmdName.equals("jobs")) {
-                        currentData = jobsListing(jobsList).getBytes();
+                byte[] pendingInput = null;
+                boolean finalOutputStreamed = false;
+                int i = 0;
+
+                while (i < n) {
+                    String cmdName = parsedSegs.get(i).get(0);
+
+                    if (isBuiltin(cmdName)) {
+                        boolean isLastStage = (i == n - 1);
+                        byte[] output = runBuiltinStage(cmdName, rawSegs.get(i), parsedSegs.get(i), jobsList);
+                        pendingInput = output;
+                        if (isLastStage) {
+                            writeFinalOutput(output, outputFile, appendMode);
+                            finalOutputStreamed = true;
+                        }
+                        i++;
                     } else {
-                        String[] cmdArr = segParts.toArray(new String[0]);
-                        currentData = runExternalStage(cmdArr, currentData, isLastStage, errorFile, errorAppendMode);
+                        int start = i;
+                        while (i < n && !isBuiltin(parsedSegs.get(i).get(0))) {
+                            i++;
+                        }
+                        int end = i;
+                        boolean runIsLast = (end == n);
+
+                        List<ProcessBuilder> builders = new ArrayList<>();
+                        for (int k = start; k < end; k++) {
+                            builders.add(new ProcessBuilder(parsedSegs.get(k).toArray(new String[0])));
+                        }
+
+                        boolean feedingPipedInput = (start != 0);
+                        if (feedingPipedInput) {
+                            builders.get(0).redirectInput(ProcessBuilder.Redirect.PIPE);
+                        }
+
+                        ProcessBuilder lastPb = builders.get(builders.size() - 1);
+                        if (runIsLast) {
+                            if (outputFile != null) {
+                                if (appendMode) {
+                                    lastPb.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(outputFile)));
+                                } else {
+                                    lastPb.redirectOutput(new File(outputFile));
+                                }
+                            } else {
+                                lastPb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                            }
+                        } else {
+                            lastPb.redirectOutput(ProcessBuilder.Redirect.PIPE);
+                        }
+
+                        for (int k = 0; k < builders.size(); k++) {
+                            ProcessBuilder pb = builders.get(k);
+                            boolean isThisLastOverall = runIsLast && (k == builders.size() - 1);
+                            if (isThisLastOverall && errorFile != null) {
+                                if (errorAppendMode) {
+                                    pb.redirectError(ProcessBuilder.Redirect.appendTo(new File(errorFile)));
+                                } else {
+                                    pb.redirectError(new File(errorFile));
+                                }
+                            } else {
+                                pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+                            }
+                        }
+
+                        List<Process> procs;
+                        try {
+                            procs = ProcessBuilder.startPipeline(builders);
+                        } catch (IOException e) {
+                            System.out.println(builders.get(0).command().get(0) + ": command not found");
+                            pendingInput = new byte[0];
+                            continue;
+                        }
+
+                        Process firstProc = procs.get(0);
+                        Process lastProc = procs.get(procs.size() - 1);
+
+                        if (feedingPipedInput) {
+                            byte[] dataToSend = (pendingInput != null) ? pendingInput : new byte[0];
+                            try (OutputStream os = firstProc.getOutputStream()) {
+                                os.write(dataToSend);
+                            } catch (IOException e) {
+                                // Downstream closed early (e.g. broken pipe); ignore.
+                            }
+                        }
+
+                        if (!runIsLast) {
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            try (InputStream is = lastProc.getInputStream()) {
+                                byte[] buf = new byte[8192];
+                                int len;
+                                while ((len = is.read(buf)) != -1) {
+                                    baos.write(buf, 0, len);
+                                }
+                            }
+                            pendingInput = baos.toByteArray();
+                        } else {
+                            finalOutputStreamed = true;
+                        }
+
+                        for (Process p : procs) {
+                            p.waitFor();
+                        }
                     }
                 }
 
-                if (outputFile != null) {
-                    try (FileOutputStream fos = new FileOutputStream(outputFile, appendMode)) {
-                        fos.write(currentData);
-                    }
-                } else {
-                    System.out.write(currentData);
-                    System.out.flush();
+                if (!finalOutputStreamed) {
+                    byte[] data = (pendingInput != null) ? pendingInput : new byte[0];
+                    writeFinalOutput(data, outputFile, appendMode);
                 }
             } else if (input.startsWith("echo ")) {
                 String rest = input.substring(5);
