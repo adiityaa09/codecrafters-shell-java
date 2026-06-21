@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.io.PrintWriter;
 import java.io.FileWriter;
+import java.io.InputStream;
 
 public class Main {
 
@@ -140,25 +141,29 @@ public class Main {
 
             if (input.equals("exit 0") || input.equals("exit")) {
                 System.exit(0);
-            } else if (input.contains(" | ")) {
+         } else if (input.contains(" | ")) {
                 String[] commandStrings = input.split("\\|");
-                List<ProcessBuilder> builders = new ArrayList<>();
+                InputStream inputStream = null;
 
                 for (int i = 0; i < commandStrings.length; i++) {
-                    List<String> cmdParts = parseArgs(commandStrings[i].trim());
-                    String[] cmdArr = cmdParts.toArray(new String[0]);
-                    ProcessBuilder pb = new ProcessBuilder(cmdArr);
+                    String cmdStr = commandStrings[i].trim();
+                    List<String> cmdParts = parseArgs(cmdStr);
+                    String cmdName = cmdParts.get(0);
 
-                    if (i == commandStrings.length - 1) {
-                        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                    // Check if it's a built-in
+                    if (List.of("echo", "type", "pwd", "cd", "jobs").contains(cmdName)) {
+                        // 1. Redirect stdout of the built-in to the next pipe
+                        // For simplicity in this stage, you can capture the output of the builtin 
+                        // and write it to the next command's input stream.
+                        
+                        // NOTE: This is complex. A simpler way for this stage is to 
+                        // only treat built-ins as 'external' if possible, or 
+                        // manually execute the builtin logic here.
+                        System.out.println("Built-in in pipeline: " + cmdName); 
+                        // ... your built-in execution logic ...
+                    } else {
+                        // Your existing ProcessBuilder logic here...
                     }
-                    pb.redirectError(ProcessBuilder.Redirect.INHERIT);
-                    builders.add(pb);
-                }
-
-                List<Process> processes = ProcessBuilder.startPipeline(builders);
-                for (Process p : processes) {
-                    p.waitFor();
                 }
             } else if (input.startsWith("echo ")) {
                 String rest = input.substring(5);
