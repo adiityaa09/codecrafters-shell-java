@@ -8,6 +8,20 @@ import java.io.FileWriter;
 
 public class Main {
 
+    static class Job {
+        int jobNumber;
+        long pid;
+        String command;
+        String status;
+
+        Job(int jobNumber, long pid, String command, String status) {
+            this.jobNumber = jobNumber;
+            this.pid = pid;
+            this.command = command;
+            this.status = status;
+        }
+    }
+
     static List<String> parseArgs(String input) {
         List<String> args = new ArrayList<>();
         StringBuilder current = new StringBuilder();
@@ -51,6 +65,8 @@ public class Main {
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
         int jobcounter = 0;
+        List<Job> jobsList = new ArrayList<>();
+
         while (true) {
             System.out.print("$ ");
             System.out.flush();
@@ -61,6 +77,7 @@ public class Main {
                 background = true;
                 input = input.substring(0, input.length() - 1).trim();
             }
+
             String outputFile = null;
             boolean appendMode = false;
 
@@ -158,7 +175,10 @@ public class Main {
                     }
                 }
             } else if (input.equals("jobs")) {
-
+                for (Job job : jobsList) {
+                    System.out.println("[" + job.jobNumber + "]+  " +
+                            String.format("%-24s", job.status) + job.command);
+                }
             } else if (input.equals("pwd")) {
                 System.out.println(System.getProperty("user.dir"));
             } else if (input.startsWith("cd ")) {
@@ -212,6 +232,8 @@ public class Main {
                         Process p = pb.start();
                         if (background) {
                             jobcounter++;
+                            Job job = new Job(jobcounter, p.pid(), input + " &", "Running");
+                            jobsList.add(job);
                             System.out.println("[" + jobcounter + "] " + p.pid());
                         } else {
                             p.waitFor();
