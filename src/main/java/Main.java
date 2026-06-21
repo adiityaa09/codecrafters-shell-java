@@ -175,23 +175,24 @@ public class Main {
                     }
                 }
             } else if (input.equals("jobs")) {
-                int totalJobs = jobsList.size();
-                for (int i = 0; i < totalJobs; i++) {
-                    Job job = jobsList.get(i);
-                    String marker = " "; // Default
+                List<Job> finishedJobs = new ArrayList<>();
 
-                    // Determine marker based on index
-                    if (i == totalJobs - 1 && totalJobs > 0) {
-                        marker = "+";
-                    } else if (i == totalJobs - 2 && totalJobs > 1) {
-                        marker = "-";
+                for (Job job : jobsList) {
+                    // Create a process handle to check status
+                    ProcessHandle ph = ProcessHandle.of(job.pid).orElse(null);
+
+                    if (ph == null || !ph.isAlive()) {
+                        // Process has finished
+                        System.out.println("[" + job.jobNumber + "] +  Done " + job.command.replace(" &", ""));
+                        finishedJobs.add(job);
+                    } else {
+                        // Process is still running
+                        System.out.println("[" + job.jobNumber + "] +  Running " + job.command);
                     }
-
-                    // Print in the format: [1] - Running ...
-                    // Note: The prompt shows the marker AFTER the job number
-                    System.out.printf("[%d] %s %-8s %s%n",
-                            job.jobNumber, marker, job.status, job.command);
                 }
+
+                // Remove the finished jobs from your list
+                jobsList.removeAll(finishedJobs);
             } else if (input.equals("pwd")) {
                 System.out.println(System.getProperty("user.dir"));
             } else if (input.startsWith("cd ")) {
