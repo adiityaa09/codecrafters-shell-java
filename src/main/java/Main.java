@@ -7,7 +7,19 @@ import java.io.PrintWriter;
 import java.io.FileWriter;
 
 public class Main {
-
+     
+    static int getNextJobNumber(List<Job> jobsList) {
+    if (jobsList.isEmpty()) {
+        return 1;
+    }
+    int max = 0;
+    for (Job job : jobsList) {
+        if (job.jobNumber > max) {
+            max = job.jobNumber;
+        }
+    }
+    return max + 1;
+}
     static class Job {
         int jobNumber;
         long pid;
@@ -264,10 +276,10 @@ public class Main {
 
                         Process p = pb.start();
                         if (background) {
-                            jobcounter++;
-                            Job job = new Job(jobcounter, p.pid(), input + " &", "Running");
+                            int newJobNumber = getNextJobNumber(jobsList);
+                            Job job = new Job(newJobNumber, p.pid(), input + " &", "Running");
                             jobsList.add(job);
-                            System.out.println("[" + jobcounter + "] " + p.pid());
+                            System.out.println("[" + newJobNumber + "] " + p.pid());
                         } else {
                             p.waitFor();
                         }
