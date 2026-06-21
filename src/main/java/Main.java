@@ -1,11 +1,15 @@
 import java.io.File;
+import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.io.PrintWriter;
 import java.io.FileWriter;
-import java.io.InputStream;
 
 public class Main {
 
@@ -94,6 +98,135 @@ public class Main {
         return args;
     }
 
+    // ---------- Helpers shared between standalone builtins and pipeline builtins ----------
+
+    static final List<String> BUILTINS = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
+
+    static boolean isBuiltin(String command) {
+        return BUILTINS.contains(command);
+    }
+
+    // Formats the argument text of an "echo" command the same way the shell's
+    // quote/escape-aware tokenizer does (collapsing unquoted whitespace).
+    static String formatEcho(String rest) {
+        List<String> tokens = parseArgs(rest);
+        return String.join(" ", tokens);
+    }
+
+    // Resolves "type <command>" to its descriptive line (no trailing newline).
+    static String typeLookup(String command) {
+        if (isBuiltin(command)) {
+            return command + " is a shell builtin";
+        } else {
+            String pathEnv = System.getenv("PATH");
+            String[] dirs = pathEnv.split(":");
+            for (String dir : dirs) {
+                File f = new File(dir, command);
+                if (f.exists() && f.canExecute()) {
+                    return command + " is " + f.getAbsolutePath();
+                }
+            }
+            return command + ": not found";
+        }
+    }
+
+    // Builds the "jobs" listing text (and reaps finished jobs as a side effect),
+    // mirroring the standalone "jobs" builtin's behavior.
+    static String jobsListing(List<Job> jobsList) {
+        StringBuilder sb = new StringBuilder();
+        List<Job> finishedJobs = new ArrayList<>();
+        int total = jobsList.size();
+
+        for (int i = 0; i < total; i++) {
+            Job job = jobsList.get(i);
+            ProcessHandle ph = ProcessHandle.of(job.pid).orElse(null);
+            String marker = (i == total - 1) ? "+" : (i == total - 2) ? "-" : " ";
+
+            if (ph == null || !ph.isAlive()) {
+                sb.append(String.format("[%d]%s  %-24s%s%n",
+                        job.jobNumber, marker, "Done", job.command.replace(" &", "")));
+                finishedJobs.add(job);
+            } else {
+                sb.append(String.format("[%d]%s  %-24s%s%n",
+                        job.jobNumber, marker, "Running", job.command));
+            }
+        }
+        jobsList.removeAll(finishedJobs);
+        return sb.toString();
+    }
+
+    // Performs "cd <path>", printing an error directly if it fails (matches
+    // the standalone "cd" builtin's behavior).
+    static void doCd(String path) throws IOException {
+        if (path.equals("~")) {
+            path = System.getenv("HOME");
+        }
+        File dir;
+        if (path.startsWith("/")) {
+            dir = new File(path);
+        } else {
+            dir = new File(System.getProperty("user.dir"), path);
+        }
+        if (dir.exists() && dir.isDirectory()) {
+            System.setProperty("user.dir", dir.getCanonicalPath());
+        } else {
+            System.out.println("cd: " + path + ": No such file or directory");
+        }
+    }
+
+    // Runs an external command as one stage of a pipeline. Feeds inputBytes
+    // to its stdin and captures its stdout fully into a byte array so it can
+    // be forwarded to the next stage (which may itself be a builtin).
+    static byte[] runExternalStage(String[] cmdArr, byte[] inputBytes, boolean isLastStage,
+                                    String errorFile, boolean errorAppendMode) throws IOException, InterruptedException {
+        ProcessBuilder pb = new ProcessBuilder(cmdArr);
+        pb.redirectInput(ProcessBuilder.Redirect.PIPE);
+        pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
+
+        if (isLastStage && errorFile != null) {
+            if (errorAppendMode) {
+                pb.redirectError(ProcessBuilder.Redirect.appendTo(new File(errorFile)));
+            } else {
+                pb.redirectError(new File(errorFile));
+            }
+        } else {
+            pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+        }
+
+        Process p;
+        try {
+            p = pb.start();
+        } catch (IOException e) {
+            System.out.println(cmdArr[0] + ": command not found");
+            return new byte[0];
+        }
+
+        final byte[] dataToWrite = (inputBytes != null) ? inputBytes : new byte[0];
+        Thread writer = new Thread(() -> {
+            try (OutputStream os = p.getOutputStream()) {
+                if (dataToWrite.length > 0) {
+                    os.write(dataToWrite);
+                }
+            } catch (IOException e) {
+                // Downstream process may have closed its stdin early (e.g. "head"); ignore.
+            }
+        });
+        writer.start();
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (InputStream is = p.getInputStream()) {
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = is.read(buf)) != -1) {
+                baos.write(buf, 0, len);
+            }
+        }
+
+        writer.join();
+        p.waitFor();
+        return baos.toByteArray();
+    }
+
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
         int jobcounter = 0;
@@ -141,29 +274,50 @@ public class Main {
 
             if (input.equals("exit 0") || input.equals("exit")) {
                 System.exit(0);
-         } else if (input.contains(" | ")) {
+            } else if (input.contains(" | ")) {
                 String[] commandStrings = input.split("\\|");
-                InputStream inputStream = null;
+                byte[] currentData = new byte[0];
+                int n = commandStrings.length;
 
-                for (int i = 0; i < commandStrings.length; i++) {
-                    String cmdStr = commandStrings[i].trim();
-                    List<String> cmdParts = parseArgs(cmdStr);
-                    String cmdName = cmdParts.get(0);
+                for (int i = 0; i < n; i++) {
+                    String seg = commandStrings[i].trim();
+                    boolean isLastStage = (i == n - 1);
 
-                    // Check if it's a built-in
-                    if (List.of("echo", "type", "pwd", "cd", "jobs").contains(cmdName)) {
-                        // 1. Redirect stdout of the built-in to the next pipe
-                        // For simplicity in this stage, you can capture the output of the builtin 
-                        // and write it to the next command's input stream.
-                        
-                        // NOTE: This is complex. A simpler way for this stage is to 
-                        // only treat built-ins as 'external' if possible, or 
-                        // manually execute the builtin logic here.
-                        System.out.println("Built-in in pipeline: " + cmdName); 
-                        // ... your built-in execution logic ...
-                    } else {
-                        // Your existing ProcessBuilder logic here...
+                    List<String> segParts = parseArgs(seg);
+                    if (segParts.isEmpty()) {
+                        continue;
                     }
+                    String cmdName = segParts.get(0);
+
+                    if (cmdName.equals("echo")) {
+                        String rest = seg.length() > 5 ? seg.substring(5) : "";
+                        String formatted = formatEcho(rest);
+                        currentData = (formatted + "\n").getBytes();
+                    } else if (cmdName.equals("type")) {
+                        String typeArg = segParts.size() > 1 ? segParts.get(1) : "";
+                        String result = typeLookup(typeArg);
+                        currentData = (result + "\n").getBytes();
+                    } else if (cmdName.equals("pwd")) {
+                        currentData = (System.getProperty("user.dir") + "\n").getBytes();
+                    } else if (cmdName.equals("cd")) {
+                        String path = segParts.size() > 1 ? segParts.get(1) : "";
+                        doCd(path);
+                        currentData = new byte[0];
+                    } else if (cmdName.equals("jobs")) {
+                        currentData = jobsListing(jobsList).getBytes();
+                    } else {
+                        String[] cmdArr = segParts.toArray(new String[0]);
+                        currentData = runExternalStage(cmdArr, currentData, isLastStage, errorFile, errorAppendMode);
+                    }
+                }
+
+                if (outputFile != null) {
+                    try (FileOutputStream fos = new FileOutputStream(outputFile, appendMode)) {
+                        fos.write(currentData);
+                    }
+                } else {
+                    System.out.write(currentData);
+                    System.out.flush();
                 }
             } else if (input.startsWith("echo ")) {
                 String rest = input.substring(5);
@@ -212,8 +366,7 @@ public class Main {
                 }
             } else if (input.startsWith("type ")) {
                 String command = input.substring(5).trim();
-                List<String> builtins = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
-                if (builtins.contains(command)) {
+                if (isBuiltin(command)) {
                     System.out.println(command + " is a shell builtin");
                 } else {
                     String pathEnv = System.getenv("PATH");
