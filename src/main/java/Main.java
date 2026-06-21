@@ -194,13 +194,24 @@ public class Main {
                     }
                 }
             } else if (input.equals("jobs")) {
-                reapJobs(jobsList);
-                for (int i = 0; i < jobsList.size(); i++) {
+                List<Job> finishedJobs = new ArrayList<>();
+                int total = jobsList.size();
+
+                for (int i = 0; i < total; i++) {
                     Job job = jobsList.get(i);
-                    String marker = (i == jobsList.size() - 1) ? "+" : (i == jobsList.size() - 2) ? "-" : " ";
-                    System.out.printf("[%d]%s  %-24s%s%n",
-                            job.jobNumber, marker, "Running", job.command);
+                    ProcessHandle ph = ProcessHandle.of(job.pid).orElse(null);
+                    String marker = (i == total - 1) ? "+" : (i == total - 2) ? "-" : " ";
+
+                    if (ph == null || !ph.isAlive()) {
+                        System.out.printf("[%d]%s  %-24s%s%n",
+                                job.jobNumber, marker, "Done", job.command.replace(" &", ""));
+                        finishedJobs.add(job);
+                    } else {
+                        System.out.printf("[%d]%s  %-24s%s%n",
+                                job.jobNumber, marker, "Running", job.command);
+                    }
                 }
+                jobsList.removeAll(finishedJobs);
             } else if (input.equals("pwd")) {
                 System.out.println(System.getProperty("user.dir"));
             } else if (input.startsWith("cd ")) {
