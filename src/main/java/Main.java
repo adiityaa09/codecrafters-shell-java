@@ -50,12 +50,17 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
-
+        int jobcounter = 0;
         while (true) {
             System.out.print("$ ");
             System.out.flush();
 
             String input = scanner.nextLine().trim();
+            boolean background = false;
+            if (input.endsWith("&")) {
+                background = true;
+                input = input.substring(0, input.length() - 1).trim();
+            }
             String outputFile = null;
             boolean appendMode = false;
 
@@ -205,7 +210,12 @@ public class Main {
                         }
 
                         Process p = pb.start();
-                        p.waitFor();
+                        if (background) {
+                            jobcounter++;
+                            System.out.println("[" + jobcounter + "] " + p.pid());
+                        } else {
+                            p.waitFor();
+                        }
                         found = true;
                         break;
                     }
