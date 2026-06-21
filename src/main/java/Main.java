@@ -98,7 +98,6 @@ public class Main {
         return args;
     }
 
-    // ---------- Helpers shared between standalone builtins and pipeline builtins ----------
 
     static final List<String> BUILTINS = List.of("echo", "exit", "type", "pwd", "cd", "jobs");
 
@@ -106,14 +105,11 @@ public class Main {
         return BUILTINS.contains(command);
     }
 
-    // Formats the argument text of an "echo" command the same way the shell's
-    // quote/escape-aware tokenizer does (collapsing unquoted whitespace).
     static String formatEcho(String rest) {
         List<String> tokens = parseArgs(rest);
         return String.join(" ", tokens);
     }
 
-    // Resolves "type <command>" to its descriptive line (no trailing newline).
     static String typeLookup(String command) {
         if (isBuiltin(command)) {
             return command + " is a shell builtin";
@@ -130,8 +126,6 @@ public class Main {
         }
     }
 
-    // Builds the "jobs" listing text (and reaps finished jobs as a side effect),
-    // mirroring the standalone "jobs" builtin's behavior.
     static String jobsListing(List<Job> jobsList) {
         StringBuilder sb = new StringBuilder();
         List<Job> finishedJobs = new ArrayList<>();
@@ -155,8 +149,6 @@ public class Main {
         return sb.toString();
     }
 
-    // Performs "cd <path>", printing an error directly if it fails (matches
-    // the standalone "cd" builtin's behavior).
     static void doCd(String path) throws IOException {
         if (path.equals("~")) {
             path = System.getenv("HOME");
@@ -174,7 +166,6 @@ public class Main {
         }
     }
 
-    // Produces the output of a single builtin pipeline stage as raw bytes.
     static byte[] runBuiltinStage(String cmdName, String rawSeg, List<String> segParts,
                                    List<Job> jobsList) throws IOException {
         if (cmdName.equals("echo")) {
@@ -196,8 +187,7 @@ public class Main {
         return new byte[0];
     }
 
-    // Writes the final accumulated pipeline output to its destination
-    // (a redirected file, or real stdout).
+
     static void writeFinalOutput(byte[] data, String outputFile, boolean appendMode) throws IOException {
         if (outputFile != null) {
             try (FileOutputStream fos = new FileOutputStream(outputFile, appendMode)) {
@@ -354,7 +344,6 @@ public class Main {
                             try (OutputStream os = firstProc.getOutputStream()) {
                                 os.write(dataToSend);
                             } catch (IOException e) {
-                                // Downstream closed early (e.g. broken pipe); ignore.
                             }
                         }
 
