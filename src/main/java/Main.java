@@ -175,9 +175,22 @@ public class Main {
                     }
                 }
             } else if (input.equals("jobs")) {
-                for (Job job : jobsList) {
-                    System.out.println("[" + job.jobNumber + "]+  " +
-                            String.format("%-24s", job.status) + job.command);
+                int totalJobs = jobsList.size();
+                for (int i = 0; i < totalJobs; i++) {
+                    Job job = jobsList.get(i);
+                    String marker = " "; // Default
+
+                    // Determine marker based on index
+                    if (i == totalJobs - 1 && totalJobs > 0) {
+                        marker = "+";
+                    } else if (i == totalJobs - 2 && totalJobs > 1) {
+                        marker = "-";
+                    }
+
+                    // Print in the format: [1] - Running ...
+                    // Note: The prompt shows the marker AFTER the job number
+                    System.out.printf("[%d] %s %-8s %s%n",
+                            job.jobNumber, marker, job.status, job.command);
                 }
             } else if (input.equals("pwd")) {
                 System.out.println(System.getProperty("user.dir"));
