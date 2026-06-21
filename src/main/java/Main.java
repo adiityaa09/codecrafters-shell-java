@@ -181,7 +181,15 @@ public class Main {
                 for (int i = 0; i < totalJobs; i++) {
                     Job job = jobsList.get(i);
                     ProcessHandle ph = ProcessHandle.of(job.pid).orElse(null);
-                    String marker = (i == totalJobs - 1) ? "+" : " ";
+
+                    String marker;
+                    if (i == totalJobs - 1) {
+                        marker = "+";
+                    } else if (i == totalJobs - 2) {
+                        marker = "-";
+                    } else {
+                        marker = " ";
+                    }
 
                     if (ph == null || !ph.isAlive()) {
                         System.out.printf("[%d]%s  %-24s%s%n",
