@@ -8,27 +8,6 @@ import java.io.FileWriter;
 
 public class Main {
 
-    private static void reapJobs(List<Job> jobsList) {
-        List<Job> finishedJobs = new ArrayList<>();
-        int total = jobsList.size();
-
-        for (int i = 0; i < total; i++) {
-            Job job = jobsList.get(i);
-            ProcessHandle ph = ProcessHandle.of(job.pid).orElse(null);
-
-            if (ph == null || !ph.isAlive()) {
-                // Determine marker based on the current position in the list
-                String marker = (i == total - 1) ? "+" : (i == total - 2) ? "-" : " ";
-
-                // EXACT spacing required by CodeCrafters tests
-                System.out.printf("[%d]%s  Done                 %s%n",
-                        job.jobNumber, marker, job.command.replace(" &", ""));
-                finishedJobs.add(job);
-            }
-        }
-        jobsList.removeAll(finishedJobs);
-    }
-
     static class Job {
         int jobNumber;
         long pid;
@@ -41,6 +20,24 @@ public class Main {
             this.command = command;
             this.status = status;
         }
+    }
+
+    private static void reapJobs(List<Job> jobsList) {
+        List<Job> finishedJobs = new ArrayList<>();
+        int total = jobsList.size();
+
+        for (int i = 0; i < total; i++) {
+            Job job = jobsList.get(i);
+            ProcessHandle ph = ProcessHandle.of(job.pid).orElse(null);
+
+            if (ph == null || !ph.isAlive()) {
+                String marker = (i == total - 1) ? "+" : (i == total - 2) ? "-" : " ";
+                System.out.printf("[%d]%s  %-24s%s%n",
+                        job.jobNumber, marker, "Done", job.command.replace(" &", ""));
+                finishedJobs.add(job);
+            }
+        }
+        jobsList.removeAll(finishedJobs);
     }
 
     static List<String> parseArgs(String input) {
@@ -197,12 +194,11 @@ public class Main {
                     }
                 }
             } else if (input.equals("jobs")) {
-                reapJobs(jobsList); // Ensure list is up-to-date
                 for (int i = 0; i < jobsList.size(); i++) {
                     Job job = jobsList.get(i);
                     String marker = (i == jobsList.size() - 1) ? "+" : (i == jobsList.size() - 2) ? "-" : " ";
-                    System.out.printf("[%d]%s  Running %s%n",
-                            job.jobNumber, marker, job.command);
+                    System.out.printf("[%d]%s  %-24s%s%n",
+                            job.jobNumber, marker, "Running", job.command);
                 }
             } else if (input.equals("pwd")) {
                 System.out.println(System.getProperty("user.dir"));
