@@ -194,6 +194,7 @@ public class Main {
                     }
                 }
             } else if (input.equals("jobs")) {
+                reapJobs(jobsList);
                 for (int i = 0; i < jobsList.size(); i++) {
                     Job job = jobsList.get(i);
                     String marker = (i == jobsList.size() - 1) ? "+" : (i == jobsList.size() - 2) ? "-" : " ";
