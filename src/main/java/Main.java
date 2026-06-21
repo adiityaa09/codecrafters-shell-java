@@ -7,19 +7,20 @@ import java.io.PrintWriter;
 import java.io.FileWriter;
 
 public class Main {
-     
+
     static int getNextJobNumber(List<Job> jobsList) {
-    if (jobsList.isEmpty()) {
-        return 1;
-    }
-    int max = 0;
-    for (Job job : jobsList) {
-        if (job.jobNumber > max) {
-            max = job.jobNumber;
+        if (jobsList.isEmpty()) {
+            return 1;
         }
+        int max = 0;
+        for (Job job : jobsList) {
+            if (job.jobNumber > max) {
+                max = job.jobNumber;
+            }
+        }
+        return max + 1;
     }
-    return max + 1;
-}
+
     static class Job {
         int jobNumber;
         long pid;
@@ -139,25 +140,27 @@ public class Main {
 
             if (input.equals("exit 0") || input.equals("exit")) {
                 System.exit(0);
-            }
-            else if (input.contains(" | ")) {
-    String[] commandStrings = input.split("\\|");
-    List<ProcessBuilder> builders = new ArrayList<>();
+            } else if (input.contains(" | ")) {
+                String[] commandStrings = input.split("\\|");
+                List<ProcessBuilder> builders = new ArrayList<>();
 
-    for (String cmdStr : commandStrings) {
-        List<String> cmdParts = parseArgs(cmdStr.trim());
-        String[] cmdArr = cmdParts.toArray(new String[0]);
-        ProcessBuilder pb = new ProcessBuilder(cmdArr);
-        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
-        builders.add(pb);
-    }
+                for (int i = 0; i < commandStrings.length; i++) {
+                    List<String> cmdParts = parseArgs(commandStrings[i].trim());
+                    String[] cmdArr = cmdParts.toArray(new String[0]);
+                    ProcessBuilder pb = new ProcessBuilder(cmdArr);
 
-    List<Process> processes = ProcessBuilder.startPipeline(builders);
-    for (Process p : processes) {
-        p.waitFor();
-    }
-} else if (input.startsWith("echo ")) {
+                    if (i == commandStrings.length - 1) {
+                        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                    }
+                    pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+                    builders.add(pb);
+                }
+
+                List<Process> processes = ProcessBuilder.startPipeline(builders);
+                for (Process p : processes) {
+                    p.waitFor();
+                }
+            } else if (input.startsWith("echo ")) {
                 String rest = input.substring(5);
                 StringBuilder result = new StringBuilder();
                 boolean inSingleQuote = false;
