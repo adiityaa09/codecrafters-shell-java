@@ -7,21 +7,20 @@ import java.io.PrintWriter;
 import java.io.FileWriter;
 
 public class Main {
-    
+
     private static void reapJobs(List<Job> jobsList) {
         List<Job> finishedJobs = new ArrayList<>();
-        int totalJobs = jobsList.size();
+        int total = jobsList.size();
 
-        for (int i = 0; i < totalJobs; i++) {
+        for (int i = 0; i < total; i++) {
             Job job = jobsList.get(i);
             ProcessHandle ph = ProcessHandle.of(job.pid).orElse(null);
 
             if (ph == null || !ph.isAlive()) {
-                // Determine marker based on position at time of reaping
-                String marker = (i == totalJobs - 1) ? "+" : 
-                                (i == totalJobs - 2) ? "-" : " ";
-                
-                // The tester is very strict about the spacing here
+                // Determine marker based on the current position in the list
+                String marker = (i == total - 1) ? "+" : (i == total - 2) ? "-" : " ";
+
+                // EXACT spacing required by CodeCrafters tests
                 System.out.printf("[%d]%s  Done                 %s%n",
                         job.jobNumber, marker, job.command.replace(" &", ""));
                 finishedJobs.add(job);
@@ -29,6 +28,7 @@ public class Main {
         }
         jobsList.removeAll(finishedJobs);
     }
+
     static class Job {
         int jobNumber;
         long pid;
@@ -196,16 +196,15 @@ public class Main {
                         System.out.println(command + ": not found");
                     }
                 }
-           } else if (input.equals("jobs")) {
+            } else if (input.equals("jobs")) {
                 reapJobs(jobsList); // Ensure list is up-to-date
                 for (int i = 0; i < jobsList.size(); i++) {
                     Job job = jobsList.get(i);
-                    String marker = (i == jobsList.size() - 1) ? "+" : 
-                                    (i == jobsList.size() - 2) ? "-" : " ";
+                    String marker = (i == jobsList.size() - 1) ? "+" : (i == jobsList.size() - 2) ? "-" : " ";
                     System.out.printf("[%d]%s  Running %s%n",
                             job.jobNumber, marker, job.command);
                 }
-             } else if (input.equals("pwd")) {
+            } else if (input.equals("pwd")) {
                 System.out.println(System.getProperty("user.dir"));
             } else if (input.startsWith("cd ")) {
                 String path = input.substring(3).trim();
